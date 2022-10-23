@@ -22,12 +22,12 @@ sudo make install
 <br>
 
 ### How to use
-If you want to perform file opreations (move, remove etc.) you have to select the entry / entries first. So if you want to remove `foo`, you have to move to it, and when its highlighted you have to press `space` to select it and then `r` to delete it.
-The keybinds below will help you understand how the program works.
+If you want to perform file operations (move, remove etc.) you have to select the entry / entries first. So if you want to remove `foo`, you have to move to it, and when its highlighted you have to press `space` to select it and then `r` to delete it.
+The keybinds can be configured in `config.h`, that will help you understand how to navigate the program.
 
 <br>
 
-### Keybinds
-<p align="left">
-<img src="shortcuts.png" width="400">
-</p>
+### Config
+Edit `config.h` then just recompile the program via `make`.
+
+<br>

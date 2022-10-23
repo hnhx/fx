@@ -19,6 +19,24 @@ int unlink_cb(const char *fpath, const struct stat *sb, int typeflag, struct FTW
     return rv;
 }
 
+int external_open(char path[4096], const char *software)
+{
+	char command[4352];
+
+
+	if (strcmp(path, software) != 0)
+	{
+		sprintf(command, "%s \"%s\"", software, path);
+	}
+	else
+	{
+		strcpy(command, software);
+	}
+
+	system(command);
+	return 0;
+}
+
 int print_permissions(struct stat st)
 {
     mode_t m = st.st_mode;

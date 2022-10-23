@@ -35,7 +35,6 @@ int main(int argc, char *argv[])
 
     char buf[10];
     
-    char software[256];
     char entry_name[256];
     char search_term[256];
     char last_entry_name[256] = { 0 };
@@ -46,8 +45,6 @@ int main(int argc, char *argv[])
     char symlink_path[4096];
     char current_entry[4096];
     char entry_to_work_with[4096] = { 0 };
-
-    char command[5120];
 
     char tags[9][4096] = { 0 };
 
@@ -80,7 +77,8 @@ int main(int argc, char *argv[])
     dir = opendir(path);
     if (dir == NULL)
     {
-       printf("This directory doesn't exist! (%s)\n", path);
+       printf("This directory doesn't exist or you lack permissions! (%s)\n", path);
+       tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
        return 1;
     }
 
@@ -88,8 +86,8 @@ int main(int argc, char *argv[])
     {
       switch (c)
       {
-        case 'a': // enter the parent directory
-        case 'h':
+        case LEFT: // enter the parent directory
+        case LEFT2:
             if (strcmp(path, "/") == 0)
             {
                 break;
@@ -99,94 +97,53 @@ int main(int argc, char *argv[])
             strcpy(path, temp_path);
             break;
 
-        case 'w': // go up
-        case 'k':
+        case UP: // go up
+        case UP2:
             if (position)
             {
               position--;
             }
             break;
 
-        case 's': // go down
-        case 'j':
+        case DOWN: // go down
+        case DOWN2:
              if (entry_count - 1 > position)
              {
                position++;
              }
              break;
 
-       case 'd': // enter a directory or open a file
-       case 'l':
+       case RIGHT: // enter a directory
+       case RIGHT2:
             stat(current_entry, &st);
-
 	    if (S_ISDIR(st.st_mode))
 	    {
+		    if (opendir(current_entry) == NULL)
+		    {
+		          break;
+		    }
+
 		    strcpy(path, current_entry);
 		    position = 0;
-	    }
-	    else
-            {
-		puts(SECONDARY_FG "\n\nOpen file with:\n");
-		puts(SECONDARY_FG "[" PRIMARY_FG "1" SECONDARY_FG"] Text editor");
-		puts(SECONDARY_FG "[" PRIMARY_FG "2" SECONDARY_FG"] Media player");
-		puts(SECONDARY_FG "[" PRIMARY_FG "3" SECONDARY_FG"] Image viewer");
-		puts(SECONDARY_FG "[" PRIMARY_FG "4" SECONDARY_FG"] Document reader");
-		puts(SECONDARY_FG "[" PRIMARY_FG "5" SECONDARY_FG"] Browser");
-		puts(SECONDARY_FG "\n[" PRIMARY_FG "6" SECONDARY_FG"] Execute it");	
 
-		c = getchar();
-		switch (c)
-	        {
-			case '1':
-				strcpy(software, text_editor);
-				break;
-			case '2':
-				strcpy(software, media_player);
-				break;
-			case '3':
-				strcpy(software, image_viewer);
-				break;
-			case '4':
-				strcpy(software, document_reader);
-				break;	
-			case '5':
-				strcpy(software, browser);
-				break;	
-			case '6':
-				strcpy(software, current_entry);
-				break;
-		}
-		
-		if (strcmp(software, current_entry) == 0)
-		{
-			strcpy(command, software);
-		}
-		else
-		{		
-	      		sprintf(command, "%s %s", software, current_entry);
-		}
-		
-		system(command);
-
-		printf(RESET);
 	    }
 	    break;
 
-       case 'g': // go to the top of the directory
+       case JUMP_FIRST: // go to the top of the directory
 	    position = 0;
 	    break;
 
-       case 'G': // go to the bottom of the directory
+       case JUMP_LAST: // go to the bottom of the directory
 	    position = entry_count - 1;
 	    break;
 
-       case 'm': // move or rename an entry
-       case 'y': // create a symlink
-       case 'c': // copy a file
-       case 'r': // remove an entry
+       case MOVE: // move or rename an entry
+       case SYMLINK: // create a symlink
+       case COPY: // copy a file
+       case REMOVE: // remove an entry
 	    if (selected_entries[0][0])
 	    {
-		    if (c == 'r')
+		    if (c == REMOVE)
 		    {
 			    printf(SECONDARY_FG"\n\nAre you sure that you want to remove the selected entries? (" PRIMARY_FG "y" SECONDARY_FG "/" PRIMARY_FG "N" SECONDARY_FG ")" RESET " ");
 			    if (getchar() != 'y')
@@ -234,13 +191,13 @@ int main(int argc, char *argv[])
 
 			    switch (c)
 			    {
-				    case 'm':
+				    case MOVE:
 					    rename(entry_to_work_with, new_path);
 					    break;
-				    case 'y':
+				    case SYMLINK:
 					    symlink(entry_to_work_with, new_path);
 					    break;
-				    case 'c':
+				    case COPY:
 
 					    if (strcmp(entry_to_work_with, new_path) == 0)
 					    {
@@ -263,7 +220,7 @@ int main(int argc, char *argv[])
 
 					    fclose(fptr1);
 					    break;
-				    case 'r':
+				    case REMOVE:
 					    stat(entry_to_work_with, &st);
 
 	    				    if (S_ISDIR(st.st_mode))
@@ -282,8 +239,8 @@ int main(int argc, char *argv[])
 	    }
 	    break;
 
-       case 't': // create a new file
-       case 'T': // create a new directory
+       case MAKE_FILE: // create a new file
+       case MAKE_DIR: // create a new directory
 	    printf(SECONDARY_FG "\n\nEntry name:" RESET " " PRIMARY_FG);
 	    tcsetattr( STDIN_FILENO, TCSANOW, &oldt);
 	    scanf("%255s", entry_name);
@@ -293,7 +250,7 @@ int main(int argc, char *argv[])
 
 	    printf(RESET);
 
-	    if (c == 't')
+	    if (c == MAKE_FILE)
 	    {
 		    fp = fopen(temp_path, "w");
 		    fclose(fp);
@@ -302,10 +259,35 @@ int main(int argc, char *argv[])
 	    {
 		    mkdir(temp_path, 0755);
 	    }
-
 	    break;
 
-       case '/': // filter entry names
+       case TEXT_OPEN: // open current file with the text editor
+	    external_open(current_entry, TEXT_EDITOR);
+	    break;
+
+       case MEDIA_OPEN:
+	    external_open(current_entry, MEDIA_PLAYER);
+	    break;
+ 
+       case IMAGE_OPEN:
+	    external_open(current_entry, IMAGE_VIEWER);
+	    break;
+	
+       case DOCUMENT_OPEN:
+	    external_open(current_entry, DOCUMENT_READER);
+	    break;
+
+       case BROWSER_OPEN:
+	    external_open(current_entry, BROWSER);
+	    break;
+
+       case EXECUTE:
+	    tcsetattr( STDIN_FILENO, TCSANOW, &oldt); 
+	    external_open(current_entry, current_entry);
+	    tcsetattr( STDIN_FILENO, TCSANOW, &newt);
+	    break;
+	    
+       case SEARCH: // search entry names
 	    printf(SECONDARY_FG "\n\nSearch entry:" RESET " " PRIMARY_FG);
 	    tcsetattr( STDIN_FILENO, TCSANOW, &oldt);
 	    scanf("%255s", search_term);
@@ -313,7 +295,7 @@ int main(int argc, char *argv[])
 	    position = 0;
 	    break;
 
-       case 'o': // open a given path
+       case OPEN: // open a given path
 	    printf(SECONDARY_FG "\n\nPath to open:" RESET " " PRIMARY_FG);
 	    tcsetattr( STDIN_FILENO, TCSANOW, &oldt);
 	    scanf("%255s", temp_path);
@@ -333,7 +315,7 @@ int main(int argc, char *argv[])
 	    break;
 
 
-       case 'u': // unhide hidden entries
+       case UNHIDE: // unhide hidden entries
 	    if (hidden)
 	    {
 		    hidden = 0;
@@ -363,7 +345,7 @@ int main(int argc, char *argv[])
 	    position = 0;
 	    break;
 
-       case 32: // space, select entries
+       case SELECT: // select entries
 	   for (int i = 0; 1024 > i; i++)
 	   {
 		   if (selected_entries[i][0])
@@ -392,7 +374,7 @@ int main(int argc, char *argv[])
            }
 	   break;
 
-       case 27: // escape, resets everything
+       case NORMAL_RESET: // resets everything
            position = 0;
            
 	   memset(selected_entries, 0, 1024 * 1024);
@@ -466,18 +448,26 @@ int main(int argc, char *argv[])
 
 	  for (int i = 0; 1024 > i; i++)
           {
+		
+		if (selected_entries[i][0] == 0)
+		{
+		   break;
+		}
+
 		if (strcmp(selected_entries[i], temp_path) == 0)
 		{
 		   printf(SECONDARY_FG);
 		}
           }
 
+	  // the user entered the parent directory so we want to highlight that
           if (strcmp(entry_name, last_entry_name) == 0)
           {
               position = entry_count;
               memset(last_entry_name, 0, 256);
               printf(SELECTED_BG SELECTED_FG);
           }
+	  // the user searched for an entry so we want to highlight that
           else if (search_term[0] && 
 	           strcasestr(entry_name, search_term))
           {
@@ -485,7 +475,8 @@ int main(int argc, char *argv[])
               memset(search_term, 0, 256);
               printf(SELECTED_BG SELECTED_FG);
           }
-          else if (entry_count == position && last_entry_name[0] == 0)
+          else if (entry_count == position && 
+	           last_entry_name[0] == 0)
           {
             printf(SELECTED_BG SELECTED_FG);
           }
@@ -542,10 +533,14 @@ int main(int argc, char *argv[])
      printf(RESET SECONDARY_FG "Last changed: " PRIMARY_FG "%s" RESET, ctime(&st.st_ctime));
 
      printf(RESET SECONDARY_FG "\nNumber of entries: " PRIMARY_FG "%d" RESET, entry_count);
-     printf(SECONDARY_FG "\nFile size sum: " PRIMARY_FG "%s" RESET,  readable_file_size(file_size_sum, buf));
+     if (file_size_sum != 0)
+     {
+     	printf(SECONDARY_FG "\nFile size sum: " PRIMARY_FG "%s" RESET,  readable_file_size(file_size_sum, buf));
+     }
 
-    } while((c=getchar()) != 'q');
+    } while((c=getchar()) != QUIT);
 
+    printf(CLEAR);
     tcsetattr( STDIN_FILENO, TCSANOW, &oldt);
 
     return 0;
