@@ -9,6 +9,8 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "util.h"
+
 int unlink_cb(const char *fpath, const struct stat *sb, int typeflag, struct FTW *ftwbuf)
 {
     int rv = remove(fpath);
