@@ -15,7 +15,7 @@
 #include <sys/wait.h>
 #include <sys/ioctl.h>
 
-#include "utils.h"
+#include "util.h"
 #include "config.h"
 
 int main(int argc, char *argv[])
